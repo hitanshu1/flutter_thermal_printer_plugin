@@ -1,0 +1,44 @@
+group 'com.seal.flutter_thermal_printer_plugin'
+version '1.0'
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:4.1.0'
+    }
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 30
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    lintOptions {
+        disable 'InvalidPackage'
+    }
+
+    defaultConfig {
+        minSdkVersion 16
+    }
+}
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.0.2'
+    implementation 'com.google.zxing:core:3.3.3'
+    implementation 'com.android.support:multidex:1.0.3'
+    implementation 'com.journeyapps:zxing-android-embedded:3.6.0@aar'
+}
