@@ -25,6 +25,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
@@ -1080,7 +1081,12 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
         }
         else if (BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(action)) {
           THREAD = null;
-          statusSink.success(2); // new paired
+          final int state = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR);
+          final int prevState = intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, BluetoothDevice.ERROR);
+          if (state == BluetoothDevice.BOND_BONDED && prevState == BluetoothDevice.BOND_BONDING) {
+            Log.d(TAG, "BONDED");
+            statusSink.success(2); // new paired
+          }
         }
 
       }
