@@ -26,7 +26,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    initPlatformState();
+    //initPlatformState();
     initSavetoPath();
     testPrint = TestPrint();
   }
@@ -143,7 +143,10 @@ class _MyAppState extends State<MyApp> {
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(primary: Colors.brown),
                       onPressed: () async{
-                        await initPlatformState();
+                        final permissions = await bluetooth.checkPermission12();
+                        if(permissions){
+                          initPlatformState();
+                        }
                       },
                       child: Text(
                         'Refresh',
@@ -174,9 +177,15 @@ class _MyAppState extends State<MyApp> {
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(primary: Colors.brown),
                       onPressed: () async {
-                        final on = await bluetooth.onBluetooth();
-                        if(on){
-                          bluetooth.newPair();
+                        final onLocation = await bluetooth.onLocation();
+                        if(onLocation){
+                          final permissions = await bluetooth.checkPermission12();
+                          if(permissions){
+                            final on = await bluetooth.onBluetooth();
+                            if(on){
+                              bluetooth.newPair();
+                            }
+                          }
                         }
                       },
                       child: Text(
@@ -231,7 +240,7 @@ class _MyAppState extends State<MyApp> {
       } else {
         bluetooth.isConnected.then((isConnected) {
           if (isConnected==false) {
-            bluetooth.connect(_device!!).catchError((error) {
+            bluetooth.connect(_device!).catchError((error) {
               setState(() => _connected = false);
             });
             setState(() => _connected = true);

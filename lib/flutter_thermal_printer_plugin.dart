@@ -76,6 +76,12 @@ class FlutterThermalPrinterPlugin {
   Future<dynamic> newPair() =>
       _channel.invokeMethod('newpair');
 
+  Future<dynamic> checkPermission12() =>
+      _channel.invokeMethod('checkPermission12');
+
+  Future<dynamic> onLocation() =>
+      _channel.invokeMethod('onLocation');
+
   ///on bluetooth
   Future<dynamic> onBluetooth() =>
       _channel.invokeMethod('On');

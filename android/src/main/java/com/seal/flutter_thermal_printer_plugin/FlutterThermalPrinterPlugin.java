@@ -2,6 +2,7 @@ package com.seal.flutter_thermal_printer_plugin;
 
 import static android.app.Activity.RESULT_OK;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.Application;
 import android.bluetooth.BluetoothAdapter;
@@ -19,6 +20,7 @@ import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
@@ -29,8 +31,17 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.location.LocationManagerCompat;
 
+import com.google.android.gms.common.api.ResolvableApiException;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.LocationSettingsResponse;
+import com.google.android.gms.location.SettingsClient;
+import com.google.android.gms.tasks.Task;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.common.BitMatrix;
@@ -64,7 +75,7 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
 
   private static final String TAG = "BThermalPrinterPlugin";
   private static final String NAMESPACE = "blue_thermal_printer";
-  private static final int REQUEST_COARSE_LOCATION_PERMISSIONS = 1451;
+  //private static final int REQUEST_COARSE_LOCATION_PERMISSIONS = 1451;
   private static final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
   private static ConnectedThread THREAD = null;
   private BluetoothAdapter mBluetoothAdapter;
@@ -72,6 +83,8 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
   final int REQUEST_ENABLE_BT = 110;
   final int REQUEST_ENABLE_BT_FOR_BONED_DEVICE = 111;
   final int SELECT_DEVICE_REQUEST_CODE = 112;
+  final int ANDROID_12_PLUS_REQUEST_CODE = 113;
+  final int REQUEST_LOCATION_ON = 114;
 
   private Result pendingResult;
 
@@ -91,6 +104,7 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
   private Application application;
   private Activity activity;
 
+  @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
   public static void registerWith(PluginRegistry.Registrar registrar) {
     final FlutterThermalPrinterPlugin instance = new FlutterThermalPrinterPlugin();
     //registrar.addRequestPermissionsResultListener(instance);
@@ -113,6 +127,7 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
     pluginBinding = null;
   }
 
+  @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
   @Override
   public void onAttachedToActivity(@NonNull ActivityPluginBinding binding) {
     activityBinding = binding;
@@ -129,6 +144,7 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
     onDetachedFromActivity();
   }
 
+  @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
   @Override
   public void onReattachedToActivityForConfigChanges(@NonNull ActivityPluginBinding binding) {
     onAttachedToActivity(binding);
@@ -139,6 +155,7 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
     detach();
   }
 
+  @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
   private void setup(
           final BinaryMessenger messenger,
           final Application application,
@@ -184,6 +201,7 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
     application = null;
   }
 
+  @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
   @Override
   public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
     boolean r = false;
@@ -220,6 +238,16 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
             }
             // ... Continue interacting with the paired device.
           }
+        }
+        r = true;
+        break;
+      case REQUEST_LOCATION_ON:
+        if(resultCode==RESULT_OK){
+          pendingResult.success(true);
+        }
+        else{
+          pendingResult.success(false);
+          pendingResult = null;
         }
         r = true;
         break;
@@ -268,6 +296,7 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
     }
   }
 
+  @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
   @Override
   public void onMethodCall(MethodCall call, Result rawResult) {
     Result result = new MethodResultWrapper(rawResult);
@@ -296,6 +325,46 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
 
       case "isConnected":
         result.success(THREAD != null);
+        break;
+      case "checkPermission12":
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+          result.success(true);
+        }
+        else{
+          int result_bluetooth = ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT);
+          int result_bluetooth_scan = ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN);
+          if (result_bluetooth == PackageManager.PERMISSION_GRANTED && result_bluetooth_scan == PackageManager.PERMISSION_GRANTED) {
+            result.success(true);
+          }
+          else{
+            pendingResult = result;
+            String[] permissions;
+            if(result_bluetooth != PackageManager.PERMISSION_GRANTED && result_bluetooth_scan == PackageManager.PERMISSION_GRANTED){
+              permissions = new String[]{Manifest.permission.BLUETOOTH_CONNECT,Manifest.permission.BLUETOOTH_SCAN};
+            }
+            else if(result_bluetooth != PackageManager.PERMISSION_GRANTED){
+              permissions = new String[]{Manifest.permission.BLUETOOTH_CONNECT};
+            }
+            else{
+              permissions = new String[]{Manifest.permission.BLUETOOTH_SCAN};
+            }
+            ActivityCompat.requestPermissions(activity, permissions, ANDROID_12_PLUS_REQUEST_CODE);
+          }
+        }
+        /*val requiredPermissions = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+        listOf(Manifest.permission.ACCESS_FINE_LOCATION)
+      } else {
+        listOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN)
+      }
+
+        val missingPermissions = requiredPermissions.filter { permission ->
+              checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED
+      }
+      if (missingPermissions.isEmpty()) {
+
+      } else {
+        requestPermissions(missingPermissions.toTypedArray(), BLUETOOTH_PERMISSION_REQUEST_CODE)
+      }*/
         break;
 
       case "openSettings":
@@ -347,6 +416,60 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
           result.error("Error", ex.getMessage(), exceptionToString(ex));
         }*/
 
+        break;
+      case "onLocation":
+        LocationRequest locationRequest = LocationRequest.create();
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
+                .addLocationRequest(locationRequest);
+        Task<LocationSettingsResponse> taskSettingsClient = LocationServices.getSettingsClient(activity)
+                .checkLocationSettings(builder.build());
+        taskSettingsClient.addOnSuccessListener(locationSettingsResponse -> {
+          if(locationSettingsResponse.getLocationSettingsStates().isLocationPresent()){
+            result.success(true);
+          }
+        });
+        taskSettingsClient.addOnFailureListener(e -> {
+          if (e instanceof ResolvableApiException) {
+            try {
+              // Handle result in onActivityResult()
+              pendingResult = result;
+              ((ResolvableApiException) e).startResolutionForResult(activity,
+                      REQUEST_LOCATION_ON);
+            } catch (IntentSender.SendIntentException exception) {
+              result.success(false);
+            }
+          }
+        });
+        
+
+/*
+        activity?.let {
+        val locationRequest = LocationRequest.create()
+        locationRequest.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+
+        val builder = LocationSettingsRequest.Builder()
+                .addLocationRequest(locationRequest)
+
+        val task = LocationServices.getSettingsClient(it)
+                .checkLocationSettings(builder.build())
+
+        task.addOnSuccessListener { response ->
+                val states = response.locationSettingsStates
+          if (states.isLocationPresent) {
+            //Do something
+          }
+        }
+        task.addOnFailureListener { e ->
+          if (e is ResolvableApiException) {
+            try {
+              // Handle result in onActivityResult()
+              e.startResolutionForResult(it,
+                      MainActivity.LOCATION_SETTING_REQUEST)
+            } catch (sendEx: IntentSender.SendIntentException) { }
+          }
+        }
+      }*/
         break;
 
       case "connect":
@@ -479,22 +602,44 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
     }
   }
 
+  private boolean isLocationEnabled(Context context) {
+    LocationManager locationManager =
+            (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+    return LocationManagerCompat.isLocationEnabled(locationManager);
+  }
+
   /**
    * @param requestCode  requestCode
    * @param permissions  permissions
    * @param grantResults grantResults
    * @return boolean
    */
+  @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
   @Override
   public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
 
-    if (requestCode == REQUEST_COARSE_LOCATION_PERMISSIONS) {
+    /*if (requestCode == REQUEST_COARSE_LOCATION_PERMISSIONS) {
       if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-        getBondedDevices(pendingResult);
+        pendingResult.success(true);
       } else {
-        pendingResult.error("no_permissions", "this plugin requires location permissions for scanning", null);
+        pendingResult.success(false);
         pendingResult = null;
       }
+      return true;
+    }*/
+    if(requestCode == ANDROID_12_PLUS_REQUEST_CODE){
+        //int length = grantResults.length;
+        boolean accepted = false;
+        for(int res : grantResults){
+          accepted = res == PackageManager.PERMISSION_GRANTED;
+        }
+        if(accepted){
+          pendingResult.success(true);
+        }
+        else{
+          pendingResult.success(false);
+        }
+        pendingResult = null;
       return true;
     }
     return false;
@@ -555,6 +700,7 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
   /**
    * @param result result
    */
+  @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
   private void getBondedDevices(Result result) {
 
     List<Map<String, Object>> list = new ArrayList<>();

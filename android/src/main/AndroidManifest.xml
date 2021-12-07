@@ -1,23 +1,38 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
   package="com.seal.flutter_thermal_printer_plugin">
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <!-- Request legacy Bluetooth permissions on older devices. -->
+    <!--<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    &lt;!&ndash; Request legacy Bluetooth permissions on older devices. &ndash;&gt;
     <uses-permission android:name="android.permission.BLUETOOTH"/>
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
     <uses-feature android:name="android.software.companion_device_setup"/>
 
-    <!-- Needed only if your app looks for Bluetooth devices.
+    &lt;!&ndash; Needed only if your app looks for Bluetooth devices.
          You must add an attribute to this permission, or declare the
          ACCESS_FINE_LOCATION permission, depending on the results when you
-         check location usage in your app. -->
+         check location usage in your app. &ndash;&gt;
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
 
-    <!-- Needed only if your app makes the device discoverable to Bluetooth
-         devices. -->
+    &lt;!&ndash; Needed only if your app makes the device discoverable to Bluetooth
+         devices. &ndash;&gt;
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
 
-    <!-- Needed only if your app communicates with already-paired Bluetooth
-         devices. -->
+    &lt;!&ndash; Needed only if your app communicates with already-paired Bluetooth
+         devices. &ndash;&gt;
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />-->
+
+
+    <!-- for Android 11 and lower -->
+    <uses-feature android:name="android.software.companion_device_setup"/>
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+
+    <!-- for Android 12 and above, include the ones you really need -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"/>
 </manifest>
