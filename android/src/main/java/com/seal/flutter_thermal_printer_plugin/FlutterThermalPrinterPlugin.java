@@ -658,7 +658,7 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
     BluetoothDeviceFilter deviceFilter =
             new BluetoothDeviceFilter.Builder()
                     // Match only Bluetooth devices whose name matches the pattern.
-                    .setNamePattern(Pattern.compile("Print"))
+                    //.setNamePattern(Pattern.compile("Print"))
                     // Match only Bluetooth devices whose service UUID matches this pattern.
                     //.addServiceUuid(new ParcelUuid(new UUID(0x123abcL, -1L)), null)
                     .build();
@@ -715,13 +715,13 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
         ret.put("type", device.getType());
         list.add(ret);
       }*/
-      if(device.getName().contains("Printer")){
+      //if(device.getName().contains("Printer")){
         Map<String, Object> ret = new HashMap<>();
         ret.put("address", device.getAddress());
         ret.put("name", device.getName());
         ret.put("type", device.getType());
         list.add(ret);
-      }
+      //}
       /*if(device.getUuids()[0].getUuid()== UUID.fromString("00001101-0000-1000-8000-00805f9b34fb")){
 
       }*/
