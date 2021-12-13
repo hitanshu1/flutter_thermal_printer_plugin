@@ -925,7 +925,7 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
           THREAD.write(bb4);
           break;
       }
-      THREAD.write(PrinterCommands.ESC_ALIGN_CENTER);
+      //THREAD.write(PrinterCommands.ESC_ALIGN_CENTER);
       String line = String.format("%-15s %15s %n", msg1, msg2);
       if(format != null) {
         line = String.format(format, msg1, msg2);
