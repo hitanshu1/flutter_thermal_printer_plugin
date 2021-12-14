@@ -108,8 +108,8 @@ class FlutterThermalPrinterPlugin {
       });
 
   ///printNewLine()
-  Future<dynamic> printNewLine({int feed = 10}) => _channel.invokeMethod('printNewLine',{
-    'size': feed
+  Future<dynamic> printNewLine({int size = 10}) => _channel.invokeMethod('printNewLine',{
+    'size': size
   });
 
   ///paperCut()

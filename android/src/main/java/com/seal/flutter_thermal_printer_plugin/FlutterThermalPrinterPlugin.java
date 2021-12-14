@@ -842,7 +842,7 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
   }
 
   private void printCustom(Result result, String message, int size, int align, String charset) {
-    boolean isBold = false;
+    //boolean isBold = false;
     // Print config "mode"
     byte[] cc = new byte[] { 0x1B, 0x21, 0x03 }; // 0- normal size text
     // byte[] cc1 = new byte[]{0x1B,0x21,0x00}; // 0- normal size text
@@ -879,11 +879,11 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
           break;
         case 5:
           THREAD.write(bb5);
-          isBold = true;
+          THREAD.write(TXT_BOLD_ON);
           break;
         case 6:
           THREAD.write(bb6);
-          isBold = true;
+          THREAD.write(TXT_BOLD_ON);
           break;
       }
 
@@ -901,12 +901,12 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
           THREAD.write(PrinterCommands.ESC_ALIGN_RIGHT);
           break;
       }
-      if(isBold){
+      /*if(isBold){
         THREAD.write(TXT_BOLD_ON);
       }
       else{
         THREAD.write(TXT_BOLD_OFF);
-      }
+      }*/
       if(charset != null) {
         THREAD.write(message.getBytes(charset));
       } else {
