@@ -516,7 +516,10 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
         break;
 
       case "printNewLine":
-        printNewLine(result);
+        if (arguments.containsKey("size")) {
+          int size = (int) arguments.get("size");
+          printNewLine(result, (byte) size);
+        }
         break;
 
       case "paperCut":
@@ -559,7 +562,8 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
           int size = (int) arguments.get("size");
           String charset = (String) arguments.get("charset");
           String format = (String) arguments.get("format");
-          printLeftRight(result, string1, string2, size, charset,format);
+          String isBold = (String) arguments.get("bold");
+          printLeftRight(result, string1, string2, size, charset,format,isBold.equals("yes")?true:false);
         } else {
           result.error("invalid_argument", "argument 'message' not found", null);
         }
@@ -838,6 +842,7 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
   }
 
   private void printCustom(Result result, String message, int size, int align, String charset) {
+    boolean isBold = false;
     // Print config "mode"
     byte[] cc = new byte[] { 0x1B, 0x21, 0x03 }; // 0- normal size text
     // byte[] cc1 = new byte[]{0x1B,0x21,0x00}; // 0- normal size text
@@ -845,6 +850,11 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
     byte[] bb2 = new byte[] { 0x1B, 0x21, 0x20 }; // 2- bold with medium text
     byte[] bb3 = new byte[] { 0x1B, 0x21, 0x10 }; // 3- bold with large text
     byte[] bb4 = new byte[] { 0x1B, 0x21, 0x30 }; // 4- strong text
+    byte[] bb5 = new byte[] { 0x1B, 0x21, 0x10 }; // 5 - bold of size 3
+    byte[] bb6 = new byte[] { 0x1B, 0x21, 0x08 }; // 6 - bold of size 1
+
+    byte[] TXT_BOLD_OFF    = {0x1b,0x45,0x00}; // Bold font OFF
+    byte[] TXT_BOLD_ON     = {0x1b,0x45,0x01}; // Bold font ON
     if (THREAD == null) {
       result.error("write_error", "not connected", null);
       return;
@@ -866,6 +876,14 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
           break;
         case 4:
           THREAD.write(bb4);
+          break;
+        case 5:
+          THREAD.write(bb5);
+          isBold = true;
+          break;
+        case 6:
+          THREAD.write(bb6);
+          isBold = true;
           break;
       }
 
@@ -883,6 +901,12 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
           THREAD.write(PrinterCommands.ESC_ALIGN_RIGHT);
           break;
       }
+      if(isBold){
+        THREAD.write(TXT_BOLD_ON);
+      }
+      else{
+        THREAD.write(TXT_BOLD_OFF);
+      }
       if(charset != null) {
         THREAD.write(message.getBytes(charset));
       } else {
@@ -896,13 +920,29 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
     }
   }
 
-  private void printLeftRight(Result result, String msg1, String msg2, int size ,String charset,String format) {
+  private void printLeftRight(Result result, String msg1, String msg2, int size ,String charset,String format,boolean isBold) {
     byte[] cc = new byte[] { 0x1B, 0x21, 0x03 }; // 0- normal size text
     // byte[] cc1 = new byte[]{0x1B,0x21,0x00}; // 0- normal size text
     byte[] bb = new byte[] { 0x1B, 0x21, 0x08 }; // 1- only bold text
     byte[] bb2 = new byte[] { 0x1B, 0x21, 0x20 }; // 2- bold with medium text
     byte[] bb3 = new byte[] { 0x1B, 0x21, 0x10 }; // 3- bold with large text
     byte[] bb4 = new byte[] { 0x1B, 0x21, 0x30 }; // 4- strong text
+    byte[] bb5 = new byte[] { 0x1B, 0x21, 0x10 }; // 5 - bold of size 3
+    byte[] bb6 = new byte[] { 0x1B, 0x21, 0x08 }; // 6 - bold of size 1
+
+
+    /*byte[] cc = new byte[] { 0x1B, 0x21, 0x03 }; // 0- normal size text
+    // byte[] cc1 = new byte[]{0x1B,0x21,0x00}; // 0- normal size text
+    byte[] bb = new byte[] { 0x1B, 0x21, 0x08 }; // 1- only bold text
+    byte[] bb2 = new byte[] { 0x1B, 0x21, 0x20 }; // 2- bold with medium text
+    //byte[] bb3 = new byte[] { 0x1B, 0x21, 0x10 }; // 3- bold with large text
+    byte[] bb3 = new byte[] { 0x1B, 0x21, 0x30 }; // 3- bold with large text
+    byte[] bb4 = new byte[] { 0x1B, 0x21, 0x30 }; // 4- strong text
+    byte[] cc1 = new byte[]{0x1B,0x21,0x00}; //5- small size text*/
+
+
+    byte[] TXT_BOLD_OFF    = {0x1b,0x45,0x00}; // Bold font OFF
+    byte[] TXT_BOLD_ON     = {0x1b,0x45,0x01}; // Bold font ON
     if (THREAD == null) {
       result.error("write_error", "not connected", null);
       return;
@@ -924,6 +964,20 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
         case 4:
           THREAD.write(bb4);
           break;
+        case 5:
+          THREAD.write(bb5);
+          isBold = true;
+          break;
+        case 6:
+          THREAD.write(bb6);
+          isBold = true;
+          break;
+      }
+      if(isBold){
+        THREAD.write(TXT_BOLD_ON);
+      }
+      else{
+        THREAD.write(TXT_BOLD_OFF);
       }
       //THREAD.write(PrinterCommands.ESC_ALIGN_CENTER);
       String line = String.format("%-15s %15s %n", msg1, msg2);
@@ -1037,13 +1091,15 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
 
   }
 
-  private void printNewLine(Result result) {
+  private void printNewLine(Result result, byte size) {
     if (THREAD == null) {
       result.error("write_error", "not connected", null);
       return;
     }
     try {
-      THREAD.write(PrinterCommands.FEED_LINE);
+      //THREAD.write(PrinterCommands.FEED_LINE);
+      byte[] FEED_LINE = {size};
+      THREAD.write(FEED_LINE);
       result.success(true);
     } catch (Exception ex) {
       Log.e(TAG, ex.getMessage(), ex);

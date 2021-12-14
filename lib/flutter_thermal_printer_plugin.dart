@@ -108,7 +108,9 @@ class FlutterThermalPrinterPlugin {
       });
 
   ///printNewLine()
-  Future<dynamic> printNewLine() => _channel.invokeMethod('printNewLine');
+  Future<dynamic> printNewLine({int feed = 10}) => _channel.invokeMethod('printNewLine',{
+    'size': feed
+  });
 
   ///paperCut()
   Future<dynamic> paperCut() => _channel.invokeMethod('paperCut');
@@ -133,13 +135,14 @@ class FlutterThermalPrinterPlugin {
 
   ///printLeftRight(String string1, String string2, int size,{String? charset, String? format})
   Future<dynamic> printLeftRight(String string1, String string2, int size,
-      {String? charset, String? format}) =>
+      {String? charset, String? format, bool isBold=false}) =>
       _channel.invokeMethod('printLeftRight', {
         'string1': string1,
         'string2': string2,
         'size': size,
         'charset': charset,
-        'format': format
+        'format': format,
+        'bold': isBold ?"yes":"no"
       });
 
   ///print3Column(String string1, String string2, String string3, int size,{String? charset, String? format})
