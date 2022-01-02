@@ -72,6 +72,9 @@ class FlutterThermalPrinterPlugin {
   Future<dynamic> connect(BluetoothDevice device) =>
       _channel.invokeMethod('connect', device.toMap());
 
+  Future<dynamic> tcpConnect(Map<String, dynamic> map) =>
+      _channel.invokeMethod('tcpconnect', map);
+
   ///pairing new devices
   Future<dynamic> newPair() =>
       _channel.invokeMethod('newpair');

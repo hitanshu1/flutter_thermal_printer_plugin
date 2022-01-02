@@ -52,6 +52,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -480,6 +483,15 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
           result.error("invalid_argument", "argument 'address' not found", null);
         }
         break;
+      case "tcpconnect":
+        if (arguments.containsKey("address")) {
+          String address = (String) arguments.get("address");
+          int port = (Integer) arguments.get("port");
+          tcpConnect(result, address,port);
+        } else {
+          result.error("invalid_argument", "argument 'address' not found", null);
+        }
+        break;
 
       case "disconnect":
         disconnect(result);
@@ -783,6 +795,27 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
         Log.e(TAG, ex.getMessage(), ex);
         result.error("connect_error", ex.getMessage(), exceptionToString(ex));
       }
+    });
+  }
+
+  private void tcpConnect(Result result, String address, int port) {
+
+    if (THREAD != null) {
+      result.error("connect_error", "already connected", null);
+      return;
+    }
+    AsyncTask.execute(() -> {
+        try {
+          Socket socket = new Socket();
+          socket.connect(new InetSocketAddress(InetAddress.getByName(address), port), 30);
+
+          THREAD = new ConnectedThread(socket);
+          THREAD.start();
+          result.success(true);
+        } catch (Exception ex) {
+          Log.e(TAG, ex.getMessage(), ex);
+          result.error("connect_error", ex.getMessage(), exceptionToString(ex));
+        }
     });
   }
 
@@ -1205,9 +1238,13 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
     private final BluetoothSocket mmSocket;
     private final InputStream inputStream;
     private final OutputStream outputStream;
+    private final Socket eSocket;
+    private  boolean exit = false;
 
     ConnectedThread(BluetoothSocket socket) {
       mmSocket = socket;
+      eSocket = null;
+      exit = false;
       InputStream tmpIn = null;
       OutputStream tmpOut = null;
 
@@ -1220,11 +1257,27 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
       inputStream = tmpIn;
       outputStream = tmpOut;
     }
+    ConnectedThread(Socket socket){
+      eSocket = socket;
+      mmSocket = null;
+      exit = false;
+      InputStream tmpIn = null;
+      OutputStream tmpOut = null;
+
+      try {
+        tmpIn = eSocket.getInputStream();
+        tmpOut = eSocket.getOutputStream();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+      inputStream = tmpIn;
+      outputStream = tmpOut;
+    }
 
     public void run() {
       byte[] buffer = new byte[1024];
       int bytes;
-      while (true) {
+      while (!exit) {
         try {
           bytes = inputStream.read(buffer);
           //readSink.success(new String(buffer, 0, bytes));
@@ -1251,7 +1304,13 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
 
         inputStream.close();
 
-        mmSocket.close();
+        if(mmSocket!=null){
+          mmSocket.close();
+        }
+        if(eSocket!=null){
+          eSocket.close();
+        }
+        exit = true;
       } catch (IOException e) {
         e.printStackTrace();
       }
