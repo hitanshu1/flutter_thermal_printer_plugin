@@ -111,6 +111,7 @@ class TestPrint {
         bluetooth.printNewLine();
         bluetooth.printNewLine();
         bluetooth.printNewLine();
+        bluetooth.printNewLine();
       }
     });
   }
