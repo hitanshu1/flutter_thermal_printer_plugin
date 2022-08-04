@@ -25,11 +25,9 @@
     <!-- for Android 11 and lower -->
     <uses-feature android:name="android.software.companion_device_setup"/>
     <uses-permission
-        android:name="android.permission.BLUETOOTH"
-        android:maxSdkVersion="30" />
+        android:name="android.permission.BLUETOOTH" />
     <uses-permission
-        android:name="android.permission.BLUETOOTH_ADMIN"
-        android:maxSdkVersion="30" />
+        android:name="android.permission.BLUETOOTH_ADMIN" />
 
     <!-- for Android 12 and above, include the ones you really need -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
