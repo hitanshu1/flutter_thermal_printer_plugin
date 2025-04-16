@@ -141,7 +141,7 @@ class _MyAppState extends State<MyApp> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: <Widget>[
                     ElevatedButton(
-                      style: ElevatedButton.styleFrom(primary: Colors.brown),
+                      // style: ElevatedButton.styleFrom(primary: Colors.brown),
                       onPressed: () async{
                         final permissions = await bluetooth.checkPermission12();
                         if(permissions){
@@ -157,8 +157,8 @@ class _MyAppState extends State<MyApp> {
                       width: 20,
                     ),
                     ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                          primary: _connected ? Colors.red : Colors.green),
+                      // style: ElevatedButton.styleFrom(
+                      //     primary: _connected ? Colors.red : Colors.green),
                       onPressed: _connected ? _disconnect : _connect,
                       child: Text(
                         _connected ? 'Disconnect' : 'Connect',
@@ -175,7 +175,7 @@ class _MyAppState extends State<MyApp> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: <Widget>[
                     ElevatedButton(
-                      style: ElevatedButton.styleFrom(primary: Colors.brown),
+                      // style: ElevatedButton.styleFrom(primary: Colors.brown),
                       onPressed: () async {
                         final onLocation = await bluetooth.onLocation();
                         if(onLocation){
@@ -199,7 +199,7 @@ class _MyAppState extends State<MyApp> {
                   padding:
                   const EdgeInsets.only(left: 10.0, right: 10.0, top: 50),
                   child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(primary: Colors.brown),
+                    // style: ElevatedButton.styleFrom(primary: Colors.brown),
                     onPressed: () {
                       testPrint.sample(pathImage);
                     },

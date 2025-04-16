@@ -71,10 +71,9 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
-import io.flutter.plugin.common.PluginRegistry;
 
 /** FlutterThermalPrinterPlugin */
-public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware,MethodCallHandler, PluginRegistry.RequestPermissionsResultListener,PluginRegistry.ActivityResultListener {
+public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware, MethodCallHandler {
 
   private static final String TAG = "BThermalPrinterPlugin";
   private static final String NAMESPACE = "blue_thermal_printer";
@@ -107,39 +106,100 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
   private Application application;
   private Activity activity;
 
-  @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
-  public static void registerWith(PluginRegistry.Registrar registrar) {
-    final FlutterThermalPrinterPlugin instance = new FlutterThermalPrinterPlugin();
-    //registrar.addRequestPermissionsResultListener(instance);
-    Activity activity = registrar.activity();
-    Application application = null;
-    instance.setup(registrar.messenger(), application, activity, registrar, null);
-
-  }
-
-  public FlutterThermalPrinterPlugin() {
-  }
-
   @Override
   public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
     pluginBinding = binding;
+    channel = new MethodChannel(binding.getBinaryMessenger(), NAMESPACE + "/methods");
+    channel.setMethodCallHandler(this);
+    stateChannel = new EventChannel(binding.getBinaryMessenger(), NAMESPACE + "/state");
+    stateChannel.setStreamHandler(stateStreamHandler);
+    context = binding.getApplicationContext();
+    mBluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+    mBluetoothAdapter = mBluetoothManager.getAdapter();
   }
 
   @Override
   public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
-    pluginBinding = null;
+    channel.setMethodCallHandler(null);
+    channel = null;
+    stateChannel.setStreamHandler(null);
+    stateChannel = null;
+    context = null;
   }
 
   @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
   @Override
   public void onAttachedToActivity(@NonNull ActivityPluginBinding binding) {
     activityBinding = binding;
-    setup(
-            pluginBinding.getBinaryMessenger(),
-            (Application) pluginBinding.getApplicationContext(),
-            activityBinding.getActivity(),
-            null,
-            activityBinding);
+    activity = binding.getActivity();
+    binding.addActivityResultListener((requestCode, resultCode, data) -> {
+      boolean handled = false;
+      switch(requestCode) {
+        case REQUEST_ENABLE_BT_FOR_BONED_DEVICE:
+          if(resultCode==RESULT_OK){
+            getBondedDevices(pendingResult);
+          }
+          else{
+            pendingResult.error("no_permissions", "this plugin requires bluetooth on", null);
+            pendingResult = null;
+          }
+          handled = true;
+          break;
+        case REQUEST_ENABLE_BT:
+          if(resultCode==RESULT_OK){
+            pendingResult.success(true);
+          }
+          else{
+            pendingResult.error("no_permissions", "this plugin requires bluetooth on", null);
+            pendingResult = null;
+          }
+          handled = true;
+          break;
+        case SELECT_DEVICE_REQUEST_CODE:
+          if (resultCode == RESULT_OK && data != null) {
+            BluetoothDevice deviceToPair = data.getParcelableExtra(
+                    CompanionDeviceManager.EXTRA_DEVICE
+            );
+
+            if (deviceToPair != null) {
+              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                deviceToPair.createBond();
+              }
+            }
+          }
+          handled = true;
+          break;
+        case REQUEST_LOCATION_ON:
+          if(resultCode==RESULT_OK){
+            pendingResult.success(true);
+          }
+          else{
+            pendingResult.success(false);
+            pendingResult = null;
+          }
+          handled = true;
+          break;
+      }
+      return handled;
+    });
+
+    binding.addRequestPermissionsResultListener((requestCode, permissions, grantResults) -> {
+      if(requestCode == ANDROID_12_PLUS_REQUEST_CODE){
+        boolean accepted = false;
+        for(int res : grantResults){
+          accepted = res == PackageManager.PERMISSION_GRANTED;
+        }
+        if(accepted){
+          pendingResult.success(true);
+        }
+        else{
+          pendingResult.success(false);
+        }
+        pendingResult = null;
+        return true;
+      }
+      return false;
+    });
   }
 
   @Override
@@ -155,107 +215,12 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
 
   @Override
   public void onDetachedFromActivity() {
-    detach();
-  }
-
-  @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
-  private void setup(
-          final BinaryMessenger messenger,
-          final Application application,
-          final Activity activity,
-          final PluginRegistry.Registrar registrar,
-          final ActivityPluginBinding activityBinding) {
-    activityBinding.addActivityResultListener(this);
-    synchronized (initializationLock) {
-      Log.i(TAG, "setup");
-      this.activity = activity;
-      this.application = application;
-      this.context = application;
-      channel = new MethodChannel(messenger, NAMESPACE + "/methods");
-      channel.setMethodCallHandler(this);
-      stateChannel = new EventChannel(messenger, NAMESPACE + "/state");
-      stateChannel.setStreamHandler(stateStreamHandler);
-      /*readChannel = new EventChannel(messenger, NAMESPACE + "/state");
-      readChannel.setStreamHandler(readResultsHandler);*/
-      mBluetoothManager = (BluetoothManager) application.getSystemService(Context.BLUETOOTH_SERVICE);
-      mBluetoothAdapter = mBluetoothManager.getAdapter();
-      if (registrar != null) {
-        // V1 embedding setup for activity listeners.
-        registrar.addRequestPermissionsResultListener(this);
-      } else {
-        // V2 embedding setup for activity listeners.
-        activityBinding.addRequestPermissionsResultListener(this);
-      }
+    if (activityBinding != null) {
+      activityBinding.removeActivityResultListener(null);
+      activityBinding.removeRequestPermissionsResultListener(null);
+      activityBinding = null;
     }
-  }
-
-
-  private void detach() {
-    Log.i(TAG, "detach");
-    context = null;
-    activityBinding.removeRequestPermissionsResultListener(this);
-    activityBinding = null;
-    channel.setMethodCallHandler(null);
-    channel = null;
-    stateChannel.setStreamHandler(null);
-    stateChannel = null;
-    mBluetoothAdapter = null;
-    mBluetoothManager = null;
-    application = null;
-  }
-
-  @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
-  @Override
-  public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
-    boolean r = false;
-    switch(requestCode) {
-      case REQUEST_ENABLE_BT_FOR_BONED_DEVICE:
-        if(resultCode==RESULT_OK){
-          getBondedDevices(pendingResult);
-        }
-        else{
-          pendingResult.error("no_permissions", "this plugin requires bluetooth on", null);
-          pendingResult = null;
-        }
-        r = true;
-        break;
-      case REQUEST_ENABLE_BT:
-        if(resultCode==RESULT_OK){
-          pendingResult.success(true);
-        }
-        else{
-          pendingResult.error("no_permissions", "this plugin requires bluetooth on", null);
-          pendingResult = null;
-        }
-        r = true;
-        break;
-      case SELECT_DEVICE_REQUEST_CODE:
-        if (resultCode == RESULT_OK && data != null) {
-          BluetoothDevice deviceToPair = data.getParcelableExtra(
-                  CompanionDeviceManager.EXTRA_DEVICE
-          );
-
-          if (deviceToPair != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-              deviceToPair.createBond();
-            }
-            // ... Continue interacting with the paired device.
-          }
-        }
-        r = true;
-        break;
-      case REQUEST_LOCATION_ON:
-        if(resultCode==RESULT_OK){
-          pendingResult.success(true);
-        }
-        else{
-          pendingResult.success(false);
-          pendingResult = null;
-        }
-        r = true;
-        break;
-    }
-    return r;
+    activity = null;
   }
 
   // MethodChannel.Result wrapper that responds on the platform thread.
@@ -624,38 +589,21 @@ public class FlutterThermalPrinterPlugin implements FlutterPlugin, ActivityAware
     return LocationManagerCompat.isLocationEnabled(locationManager);
   }
 
-  /**
-   * @param requestCode  requestCode
-   * @param permissions  permissions
-   * @param grantResults grantResults
-   * @return boolean
-   */
+  // Remove the @Override annotation from onRequestPermissionsResult since it's no longer implementing an interface
   @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
-  @Override
   public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-
-    /*if (requestCode == REQUEST_COARSE_LOCATION_PERMISSIONS) {
-      if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-        pendingResult.success(true);
-      } else {
-        pendingResult.success(false);
-        pendingResult = null;
-      }
-      return true;
-    }*/
     if(requestCode == ANDROID_12_PLUS_REQUEST_CODE){
-        //int length = grantResults.length;
-        boolean accepted = false;
-        for(int res : grantResults){
-          accepted = res == PackageManager.PERMISSION_GRANTED;
-        }
-        if(accepted){
-          pendingResult.success(true);
-        }
-        else{
-          pendingResult.success(false);
-        }
-        pendingResult = null;
+      boolean accepted = false;
+      for(int res : grantResults){
+        accepted = res == PackageManager.PERMISSION_GRANTED;
+      }
+      if(accepted){
+        pendingResult.success(true);
+      }
+      else{
+        pendingResult.success(false);
+      }
+      pendingResult = null;
       return true;
     }
     return false;
